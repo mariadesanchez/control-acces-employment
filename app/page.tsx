@@ -148,12 +148,28 @@ export default function Page() {
         />
         <CameraCapture captureRef={captureRef} />
         <button
-          onClick={handleSubmit}
-          disabled={uploading}
-          style={{ marginTop: 16, width: "80%", padding: 10, fontSize: 16, borderRadius: 8, border: "none", background: uploading ? "#aaa" : "#0070f3", color: "#fff", cursor: uploading ? "not-allowed" : "pointer" }}
-        >
-          {uploading ? "Guardando..." : "Guardar"}
-        </button>
+  onClick={handleSubmit}
+  disabled={uploading}
+  style={{
+    marginTop: 16,
+    width: "60px",
+    height: "60px",
+    borderRadius: "50%",       // lo hace redondo
+    border: "none",
+    background: uploading ? "#16a34a80" : "#16a34a", // verde con opacidad si está guardando
+    color: "#fff",
+    fontSize: 14,
+    cursor: uploading ? "not-allowed" : "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: "auto",
+    marginRight: "auto",       // lo centra horizontalmente
+  }}
+>
+  {uploading ? "…" : "✓"}
+</button>
+
         {saved && <p style={{ color: "green", marginTop: 10 }}>✅ Guardado Exitoso</p>}
       </div>
     </div>

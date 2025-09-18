@@ -177,6 +177,7 @@
 // }
 
 "use client";
+
 import React, { useRef, useState } from "react";
 import CameraCapture from "../components/CameraCapture";
 
@@ -193,31 +194,30 @@ export default function Page() {
     }
 
     setUploading(true);
-    try {
-      // 1. Capturar foto
-      const file = await captureRef.current?.();
-      if (!file) {
-        alert("No se pudo capturar la foto");
-        return;
-      }
 
-      // 2. Subir a Cloudinary vía /api/upload
+    try {
+      // 1️⃣ Capturar foto
+      const file = await captureRef.current?.();
+      if (!file) throw new Error("No se pudo capturar la foto");
+
+      // 2️⃣ Subir a Cloudinary (unsigned)
       const formData = new FormData();
       formData.append("file", file);
+      formData.append("upload_preset", process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!);
 
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
+      const cloudRes = await fetch(
+        `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/upload`,
+        { method: "POST", body: formData }
+      );
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Error al subir imagen");
+      const cloudData = await cloudRes.json();
+      if (!cloudRes.ok) throw new Error(cloudData.error?.message || "Error al subir a Cloudinary");
 
-      // 3. Guardar en Supabase vía /api/save
+      // 3️⃣ Guardar en Supabase
       const saveRes = await fetch("/api/save", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nombre: nombreCompleto, foto_url: data.url }),
+        body: JSON.stringify({ nombre: nombreCompleto, foto_url: cloudData.secure_url }),
       });
 
       const saveData = await saveRes.json();
@@ -233,73 +233,25 @@ export default function Page() {
   };
 
   return (
-    <div
-      style={{
-        backgroundColor: "#f2f2f2",
-        minHeight: "100vh",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        padding: "16px",
-      }}
-    >
-      <div
-        style={{
-          background: "#fff",
-          padding: "20px",
-          borderRadius: "12px",
-          boxShadow: "0px 4px 8px rgba(0,0,0,0.1)",
-          maxWidth: "400px",
-          width: "100%",
-          textAlign: "center",
-        }}
-      >
-        {/* Logo */}
-        <img
-          src="/Logo.jpeg"
-          alt="Logo"
-          style={{ width: "80%", margin: "0 auto 10px" }}
-        />
-
-        {/* Nombre y Apellido */}
+    <div style={{ minHeight: "100vh", display: "flex", justifyContent: "center", alignItems: "center", background: "#f2f2f2", padding: 16 }}>
+      <div style={{ background: "#fff", padding: 20, borderRadius: 12, boxShadow: "0 4px 8px rgba(0,0,0,0.1)", maxWidth: 400, width: "100%", textAlign: "center" }}>
+        <img src="/Logo.jpeg" alt="Logo" style={{ width: "80%", marginBottom: 10 }} />
         <input
           type="text"
           placeholder="Nombre y Apellido"
           value={nombreCompleto}
           onChange={(e) => setNombreCompleto(e.target.value)}
-          style={{
-            width: "80%",
-            padding: "10px",
-            fontSize: "16px",
-            borderRadius: "8px",
-            border: "1px solid #ccc",
-            textAlign: "center",
-            marginBottom: "12px",
-          }}
+          style={{ width: "80%", padding: 10, fontSize: 16, borderRadius: 8, border: "1px solid #ccc", textAlign: "center", marginBottom: 12 }}
         />
-
-        {/* Cámara */}
         <CameraCapture captureRef={captureRef} />
-
         <button
           onClick={handleSubmit}
           disabled={uploading}
-          style={{
-            marginTop: "16px",
-            width: "80%",
-            padding: "10px",
-            fontSize: "16px",
-            borderRadius: "8px",
-            border: "none",
-            background: uploading ? "#aaa" : "#0070f3",
-            color: "#fff",
-            cursor: uploading ? "not-allowed" : "pointer",
-          }}
+          style={{ marginTop: 16, width: "80%", padding: 10, fontSize: 16, borderRadius: 8, border: "none", background: uploading ? "#aaa" : "#0070f3", color: "#fff", cursor: uploading ? "not-allowed" : "pointer" }}
         >
           {uploading ? "Guardando..." : "Guardar"}
         </button>
-
-        {saved && <p style={{ color: "green", marginTop: "10px" }}>✅ Guardado Exitoso</p>}
+        {saved && <p style={{ color: "green", marginTop: 10 }}>✅ Guardado Exitoso</p>}
       </div>
     </div>
   );

@@ -179,6 +179,13 @@
 "use client";
 import React, { useRef, useState } from "react";
 import CameraCapture from "../components/CameraCapture";
+import { createClient } from "@supabase/supabase-js";
+
+// Inicializamos Supabase client
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 export default function Page() {
   const captureRef = useRef<() => Promise<File | null>>(null);
@@ -194,14 +201,14 @@ export default function Page() {
 
     setUploading(true);
     try {
-      // 1. Capturar foto
+      // 1. Capturamos foto
       const file = await captureRef.current?.();
       if (!file) {
         alert("No se pudo capturar la foto");
         return;
       }
 
-      // 2. Subir a Cloudinary vía /api/upload
+      // 2. Subimos a nuestra API
       const formData = new FormData();
       formData.append("file", file);
 
@@ -213,15 +220,15 @@ export default function Page() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al subir imagen");
 
-      // 3. Guardar en Supabase vía /api/save
-      const saveRes = await fetch("/api/save", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nombre: nombreCompleto, foto_url: data.url }),
-      });
-
-      const saveData = await saveRes.json();
-      if (!saveRes.ok) throw new Error(saveData.error || "Error al guardar en Supabase");
+      // 3. Guardamos en Supabase
+      const { error } = await supabase.from("accesos").insert([
+        {
+          nombre: nombreCompleto,
+          foto_url: data.url,
+          fecha_ingreso: new Date().toISOString(),
+        },
+      ]);
+      if (error) throw error;
 
       setSaved(true);
     } catch (err: any) {
@@ -280,30 +287,8 @@ export default function Page() {
 
         {/* Cámara */}
         <CameraCapture captureRef={captureRef} />
-        <button
-  onClick={handleSubmit}
-  disabled={uploading}
-  style={{
-    marginTop: "16px",
-    width: "60px",
-    height: "60px",
-    borderRadius: "50%",
-    border: "none",
-    background: uploading ? "#16a34a80" : "#16a34a", // verde con opacidad si está guardando
-    color: "#fff",
-    fontSize: "14px",
-    cursor: uploading ? "not-allowed" : "pointer",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    marginLeft: "auto",
-    marginRight: "auto",
-  }}
->
-  {uploading ? "…" : "✓"}
-</button>
 
-        {/* <button
+        <button
           onClick={handleSubmit}
           disabled={uploading}
           style={{
@@ -319,10 +304,12 @@ export default function Page() {
           }}
         >
           {uploading ? "Guardando..." : "Guardar"}
-        </button> */}
+        </button>
 
         {saved && <p style={{ color: "green", marginTop: "10px" }}>✅ Guardado Exitoso</p>}
       </div>
     </div>
   );
 }
+
+
